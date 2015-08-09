@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -28,6 +28,14 @@ namespace MuMech
 
             GUILayout.BeginVertical();
 
+            // GetReferenceTransformPart is null after undocking ...
+            if (vessel.GetReferenceTransformPart() == null || !vessel.GetReferenceTransformPart().Modules.Contains("ModuleDockingNode"))
+            {
+                GUIStyle s = new GUIStyle(GUI.skin.label);
+                s.normal.textColor = Color.yellow;
+                GUILayout.Label("Warning: You need to control the vessel from a docking port. Right click a docking port and select \"Control from here\"",s);
+            }
+
             if (!(core.target.Target is ModuleDockingNode))
             {
                 GUIStyle s = new GUIStyle(GUI.skin.label);
@@ -36,7 +44,7 @@ namespace MuMech
             }
 
             bool onAxisNodeExists = false;
-            foreach (ModuleDockingNode node in vessel.GetModules<ModuleDockingNode>())
+            foreach (ITargetable node in vessel.GetTargetables().Where(t => t.GetTargetingMode() == VesselTargetModes.DirectionVelocityAndOrientation))
             {
                 if (Vector3d.Angle(node.GetTransform().forward, vessel.ReferenceTransform.up) < 2)
                 {
@@ -54,6 +62,49 @@ namespace MuMech
 
             bool active = GUILayout.Toggle(autopilot.enabled, "Autopilot enabled");
             GuiUtils.SimpleTextBox("Speed limit", autopilot.speedLimit, "m/s");
+
+            autopilot.overrideSafeDistance = GUILayout.Toggle(autopilot.overrideSafeDistance, "Override Safe Distance");
+            if (autopilot.overrideSafeDistance)
+                GuiUtils.SimpleTextBox("Safe Distance", autopilot.overridenSafeDistance, "m");
+
+            autopilot.overrideTargetSize = GUILayout.Toggle(autopilot.overrideTargetSize, "Override Start Distance");
+            if (autopilot.overrideTargetSize)
+                GuiUtils.SimpleTextBox("Start Distance", autopilot.overridenTargetSize, "m");
+
+            if (autopilot.overridenSafeDistance < 0)
+                autopilot.overridenSafeDistance = 0;
+
+            if (autopilot.overridenTargetSize < 10)
+                autopilot.overridenTargetSize = 10;
+
+            autopilot.drawBoundingBox = GUILayout.Toggle(autopilot.drawBoundingBox, "Draw Bounding Box");
+
+            if (GUILayout.Button("Dump Bounding Box Info"))
+            {
+                vessel.GetBoundingBox(true);
+
+                if (core.target.Target != null)
+                {
+                    Vessel targetVessel = core.target.Target.GetVessel();
+                    targetVessel.GetBoundingBox(true);
+                }
+            }
+
+
+            GUILayout.Label("safeDistance " + autopilot.safeDistance.ToString("F2"), GUILayout.ExpandWidth(false));
+            GUILayout.Label("targetSize   " + autopilot.targetSize.ToString("F2"), GUILayout.ExpandWidth(false));
+			
+            if (autopilot.speedLimit < 0)
+                autopilot.speedLimit = 0;
+
+
+            GUILayout.BeginHorizontal();
+            autopilot.forceRol = GUILayout.Toggle(autopilot.forceRol, "Force Roll :", GUILayout.ExpandWidth(false));
+
+            autopilot.rol.text = GUILayout.TextField(autopilot.rol.text, GUILayout.Width(30));
+            GUILayout.Label("°", GUILayout.ExpandWidth(false));
+            GUILayout.EndHorizontal();
+
             if (autopilot.enabled != active)
             {
                 if (active)
@@ -69,13 +120,17 @@ namespace MuMech
             if (autopilot.enabled)
             {
                 GUILayout.Label("Status: " + autopilot.status);
-                Vector3d error = core.rcs.targetVelocity - vesselState.velocityVesselOrbit;
+                Vector3d error = core.rcs.targetVelocity - vesselState.orbitalVelocity;
                 double error_x = Vector3d.Dot(error, vessel.GetTransform().right);
                 double error_y = Vector3d.Dot(error, vessel.GetTransform().forward);
                 double error_z = Vector3d.Dot(error, vessel.GetTransform().up);
                 GUILayout.Label("Error X: " + error_x.ToString("F2") + " m/s  [L/J]");
                 GUILayout.Label("Error Y: " + error_y.ToString("F2") + " m/s  [I/K]");
                 GUILayout.Label("Error Z: " + error_z.ToString("F2") + " m/s  [H/N]");
+
+                GUILayout.Label("Distance Dock: " + autopilot.zSep.ToString("F2") + "m");
+                GUILayout.Label("Distance Axe Dock: " + autopilot.lateralSep.magnitude.ToString("F2") + "m");
+
             }
 
             GUILayout.EndVertical();

@@ -20,6 +20,12 @@ namespace MuMech
 
         public int priority = 0;
 
+        [Persistent(pass = (int)Pass.Local)]
+        public string unlockParts = "";
+        [Persistent(pass = (int)Pass.Local)]
+        public string unlockTechs = "";
+        public bool unlockChecked = false;
+
         public int CompareTo(ComputerModule other)
         {
             if (other == null) return 1;
@@ -124,9 +130,9 @@ namespace MuMech
         {
             try
             {
-                if (global != null) ConfigNode.CreateConfigFromObject(this, (int)Pass.Global).CopyTo(global);
-                if (type != null) ConfigNode.CreateConfigFromObject(this, (int)Pass.Type).CopyTo(type);
-                if (local != null) ConfigNode.CreateConfigFromObject(this, (int)Pass.Local).CopyTo(local);
+                if (global != null) ConfigNode.CreateConfigFromObject(this, (int)Pass.Global, null).CopyTo(global);
+                if (type != null) ConfigNode.CreateConfigFromObject(this, (int)Pass.Type, null).CopyTo(type);
+                if (local != null) ConfigNode.CreateConfigFromObject(this, (int)Pass.Local, null).CopyTo(local);
             }
             catch (Exception e)
             {
@@ -138,9 +144,66 @@ namespace MuMech
         {
         }
 
-        public void print(object message)
+
+        public virtual bool IsSpaceCenterUpgradeUnlocked()
         {
-            MonoBehaviour.print(message);
+            return true;
+        }
+
+        public virtual void UnlockCheck()
+        {
+            if (!unlockChecked)
+            {
+                bool unlock = true;
+
+                if (ResearchAndDevelopment.Instance != null)
+                {
+                    string[] parts = unlockParts.Split(new char[] { ' ', ',', ';', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 0)
+                    {
+                        unlock = false;
+                        foreach (string p in parts)
+                        {
+                            if (PartLoader.LoadedPartsList.Count(a => a.name == p) > 0 && ResearchAndDevelopment.PartModelPurchased(PartLoader.LoadedPartsList.First(a => a.name == p)))
+                            {
+                                unlock = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    string[] techs = unlockTechs.Split(new char[] { ' ', ',', ';', '\t', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                    if (techs.Length > 0)
+                    {
+                        if (parts.Length == 0)
+                        {
+                            unlock = false;
+                        }
+                        foreach (string t in techs)
+                        {
+                            if (ResearchAndDevelopment.GetTechnologyState(t) == RDTech.State.Available)
+                            {
+                                unlock = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                unlock = unlock && IsSpaceCenterUpgradeUnlocked();
+
+                unlockChecked = true;
+                if (!unlock)
+                {
+                    enabled = false;
+                    core.someModuleAreLocked = true;
+                }
+            }
+        }
+
+        public static void print(object message)
+        {
+            MonoBehaviour.print("[MechJeb2] " + message);
         }
     }
 
@@ -166,7 +229,7 @@ namespace MuMech
 
         public new void Add(object user)
         {
-            if (!base.Contains(user))
+            if (user != null && !base.Contains(user))
             {
                 base.Add(user);
             }
@@ -175,7 +238,7 @@ namespace MuMech
 
         public new void Remove(object user)
         {
-            if (base.Contains(user))
+            if (user != null && base.Contains(user))
             {
                 base.Remove(user);
             }
@@ -196,7 +259,15 @@ namespace MuMech
             }
             else
             {
-                return this.OfType<ComputerModule>().ToList().Exists(c => (c != controlledModule) && c.users.RecursiveUser(user));
+                foreach (object o in this)
+                {
+                    ComputerModule c = o as ComputerModule;
+                    if (c != null && c != controlledModule)
+                    {
+                        if (c.users.RecursiveUser(user)) return true;
+                    }
+                }
+                return false;
             }
         }
     }

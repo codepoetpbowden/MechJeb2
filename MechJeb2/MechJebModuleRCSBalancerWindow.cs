@@ -37,10 +37,7 @@ namespace MuMech
             bool wasEnabled = balancer.smartTranslation;
 
             GUILayout.BeginHorizontal();
-            balancer.smartTranslation = GUILayout.Toggle(balancer.smartTranslation, "Smart translation", GUILayout.Width(130));
-            GUIStyle s = new GUIStyle(GUI.skin.label);
-            s.normal.textColor = Color.yellow;
-            GUILayout.Label("experimental", s);
+            balancer.smartTranslation = GUILayout.Toggle(balancer.smartTranslation, "Smart translation", GUILayout.Width(130));            
             GUILayout.EndHorizontal();
 
             if (wasEnabled != balancer.smartTranslation)
@@ -69,7 +66,7 @@ namespace MuMech
                 GuiUtils.SimpleTextBox("Overdrive", balancer.overdrive, "%");
 
                 double sliderVal = GUILayout.HorizontalSlider((float)balancer.overdrive, 0.0F, 1.0F);
-                int sliderPrecision = 3;
+                const int sliderPrecision = 3;
                 if (Math.Round(Math.Abs(sliderVal - oldOverdrive), sliderPrecision) > 0)
                 {
                     double rounded = Math.Round(sliderVal, sliderPrecision);
@@ -86,7 +83,7 @@ namespace MuMech
                     //balancer.smartRotation = GUILayout.Toggle(balancer.smartRotation, "Smart rotation");
 
                     GuiUtils.SimpleTextBox("Overdrive scale", balancer.overdriveScale);
-                    GuiUtils.SimpleTextBox("Torque factor", balancer.tuningParamFactorTorque);
+                    GuiUtils.SimpleTextBox("torque factor", balancer.tuningParamFactorTorque);
                     GuiUtils.SimpleTextBox("Translate factor", balancer.tuningParamFactorTranslate);
                     GuiUtils.SimpleTextBox("Waste factor", balancer.tuningParamFactorWaste);
                 }
